@@ -5006,6 +5006,8 @@ if BUSES["RS232"] then
 		MAME_DIR .. "src/devices/bus/rs232/ie15.h",
 		MAME_DIR .. "src/devices/bus/rs232/keyboard.cpp",
 		MAME_DIR .. "src/devices/bus/rs232/keyboard.h",
+		MAME_DIR .. "src/devices/bus/rs232/logimouse_c7.cpp",
+		MAME_DIR .. "src/devices/bus/rs232/logimouse_c7.h",
 		MAME_DIR .. "src/devices/bus/rs232/loopback.cpp",
 		MAME_DIR .. "src/devices/bus/rs232/loopback.h",
 		MAME_DIR .. "src/devices/bus/rs232/mboardd.cpp",
