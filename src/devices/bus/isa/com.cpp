@@ -10,6 +10,7 @@
 #include "com.h"
 
 #include "bus/rs232/hlemouse.h"
+#include "bus/rs232/logimouse_c7.h"
 #include "bus/rs232/null_modem.h"
 #include "bus/rs232/rs232.h"
 #include "bus/rs232/sun_kbd.h"
@@ -24,6 +25,7 @@ static void isa_com(device_slot_interface &device)
 	// TODO: why such a tiny list of allowed devices?
 	device.option_add("microsoft_mouse", MSFT_HLE_SERIAL_MOUSE);
 	device.option_add("logitech_mouse",  LOGITECH_HLE_SERIAL_MOUSE);
+	device.option_add("logitech_c7",     LOGITECH_C7_SERIAL_MOUSE);
 	device.option_add("wheel_mouse",     WHEEL_HLE_SERIAL_MOUSE);
 	device.option_add("msystems_mouse",  MSYSTEMS_HLE_SERIAL_MOUSE);
 	device.option_add("rotatable_mouse", ROTATABLE_HLE_SERIAL_MOUSE);
