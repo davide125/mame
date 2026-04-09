@@ -90,6 +90,8 @@ public:
 	void update(unsigned count);
 	void timer_w(int state);
 
+	void enter_stop(); // STOP instruction: TCR7 cleared, TCR6 set
+
 private:
 	enum tcr_mask : u8
 	{
@@ -197,6 +199,7 @@ protected:
 
 	virtual void interrupt() override;
 	virtual void burn_cycles(unsigned count) override;
+	virtual void stop_hook() override;
 
 	virtual std::unique_ptr<util::disasm_interface> create_disassembler() override;
 
