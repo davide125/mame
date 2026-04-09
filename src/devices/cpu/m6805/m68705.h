@@ -463,9 +463,6 @@ class m146805_device : public m6805_hmos_device
 protected:
 	m146805_device(machine_config const &mconfig, char const *tag, device_t *owner, u32 clock, device_type type, u32 addr_width, unsigned ram_size);
 
-	virtual uint64_t execute_clocks_to_cycles(uint64_t clocks) const noexcept override { return (clocks + 4) / 5; }
-	virtual uint64_t execute_cycles_to_clocks(uint64_t cycles) const noexcept override { return cycles * 5; }
-
 	virtual std::unique_ptr<util::disasm_interface> create_disassembler() override;
 };
 
@@ -473,12 +470,20 @@ class m146805e2_device : public m146805_device
 {
 public:
 	m146805e2_device(machine_config const &mconfig, char const *tag, device_t *owner, u32 clock);
+
+protected:
+	// internal bus clock is fosc/5 (the F2/G2 divide by 2 or 4 instead)
+	virtual uint64_t execute_clocks_to_cycles(uint64_t clocks) const noexcept override { return (clocks + 4) / 5; }
+	virtual uint64_t execute_cycles_to_clocks(uint64_t cycles) const noexcept override { return cycles * 5; }
 };
 
 class m146805f2_device : public m146805_device
 {
 public:
 	m146805f2_device(machine_config const &mconfig, char const *tag, device_t *owner, u32 clock);
+
+protected:
+	virtual void internal_map(address_map &map) override ATTR_COLD;
 };
 
 #define M6805_INT_TIMER             (M6805_IRQ_LINE + 1)
