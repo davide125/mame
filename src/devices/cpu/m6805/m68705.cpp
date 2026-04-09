@@ -93,6 +93,7 @@ ROM_END
 
 enum : u16 {
 	M68705_VECTOR_BOOTSTRAP  = 0xfff6,
+	M6805_VECTOR_TIMER_WAIT  = 0xfff6, // timer interrupt from WAIT (CMOS parts)
 	M6805_VECTOR_TIMER       = 0xfff8,
 	M6805_VECTOR_INT2        = 0xfff8,
 	M6805_VECTOR_INT         = 0xfffa,
@@ -610,10 +611,12 @@ void m6805_hmos_device::interrupt()
 			{
 				LOGINT("servicing timer/counter interrupt\n");
 				standard_irq_callback(1, m_pc.w.l);
+				// CMOS parts have a separate vector for timer interrupts taken from WAIT
+				u16 const vector = (m_stop_state & M6805_WAIT) ? M6805_VECTOR_TIMER_WAIT : M6805_VECTOR_TIMER;
 				if (m_params.m_addr_width > 13)
-					rm16<true>(M6805_VECTOR_TIMER, m_pc);
+					rm16<true>(vector, m_pc);
 				else
-					rm16<false>(M6805_VECTOR_TIMER, m_pc);
+					rm16<false>(vector, m_pc);
 			}
 			else
 			{
@@ -628,6 +631,11 @@ void m6805_hmos_device::interrupt()
 void m6805_hmos_device::burn_cycles(unsigned count)
 {
 	m_timer.update(count);
+}
+
+void m6805_hmos_device::stop_hook()
+{
+	m_timer.enter_stop();
 }
 
 template <std::size_t N> void m6805_hmos_device::add_port_latch_state()
@@ -1050,4 +1058,10 @@ void m6805_timer::timer_w(int state)
 		m_timer_edges++;
 
 	m_timer = bool(state);
+}
+
+void m6805_timer::enter_stop()
+{
+	m_tcr = (m_tcr & ~TCR_TIR) | TCR_TIM;
+	m_parent.set_input_line(M6805_INT_TIMER, CLEAR_LINE);
 }
