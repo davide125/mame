@@ -914,11 +914,11 @@ m146805e2_device::m146805e2_device(machine_config const &mconfig, char const *ta
 }
 
 m146805f2_device::m146805f2_device(machine_config const &mconfig, char const *tag, device_t *owner, uint32_t clock)
-	: m146805_device(mconfig, tag, owner, clock, M146805F2, 12, 64)
+	: m146805_device(mconfig, tag, owner, clock, M146805F2, 11, 64)
 {
 	m_timer.set_options(m6805_timer::TIMER_PGM);
 
-	set_port_mask<2>(0xf0); // Port C is four bits wide
+	set_port_mask<2>(0xf0); // Port C is a four bit fixed input port
 	set_port_mask<3>(0xff); // Port D isn't present
 }
 
@@ -1003,6 +1003,23 @@ void m6805r3_device::internal_map(address_map &map)
 
 	map(0x000e, 0x000e).rw(FUNC(m6805r3_device::acr_r), FUNC(m6805r3_device::acr_w));
 	map(0x000f, 0x000f).rw(FUNC(m6805r3_device::arr_r), FUNC(m6805r3_device::arr_w));
+}
+
+void m146805f2_device::internal_map(address_map &map)
+{
+	m6805_hmos_device::internal_map(map);
+
+	/*
+	 * Reg/RAM    User ROM   Self Check            Vectors
+	 * 0000-007f  0080-04b6  04b7-04ff, 0780-07f5  07f6-07ff
+	 *
+	 * Dumps are expected to cover the whole 2 KB address space from address 0.
+	 */
+	map(0x0080, 0x07ff).rom().region(tag(), 0x80);
+
+	// Port C is input only, with no output latch or data direction register
+	map(0x0002, 0x0002).nopw();
+	map(0x0006, 0x0006).nopw();
 }
 
 std::unique_ptr<util::disasm_interface> m6805_hmos_device::create_disassembler()
