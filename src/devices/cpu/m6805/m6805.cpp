@@ -459,6 +459,8 @@ void m6805_base_device::device_start()
 	save_item(NAME(m_pending_interrupts));
 	save_item(NAME(m_irq_state));
 	save_item(NAME(m_nmi_state));
+	save_item(NAME(m_stop_state));
+	save_item(NAME(m_stop_recovery));
 
 	std::fill(std::begin(m_irq_state), std::end(m_irq_state), CLEAR_LINE);
 }
@@ -474,6 +476,8 @@ void m6805_base_device::device_reset()
 	m_pending_interrupts = 0;
 
 	m_nmi_state = 0;
+	m_stop_state = 0;
+	m_stop_recovery = 0;
 
 	// IRQ disabled
 	SEI;
@@ -637,10 +641,39 @@ void m6805_base_device::execute_run()
 
 	do
 	{
-		if (m_pending_interrupts != 0)
+		if (m_stop_state)
 		{
-			interrupt();
+			// STOP/WAIT: idle until an interrupt is recognised.  The timer
+			// only counts in WAIT; leaving STOP takes the oscillator
+			// stabilisation delay first.
+			while (m_icount > 0)
+			{
+				if (m_pending_interrupts != 0)
+				{
+					if (m_stop_recovery)
+					{
+						m_stop_recovery--;
+					}
+					else
+					{
+						// interrupt() checks the WAIT state to pick the timer vector
+						interrupt();
+						m_stop_state = 0;
+						break;
+					}
+				}
+				else if (m_stop_state & M6805_WAIT)
+				{
+					burn_cycles(1);
+				}
+				debugger_wait_hook();
+				m_icount--;
+			}
+			continue;
 		}
+
+		if (m_pending_interrupts != 0)
+			interrupt();
 
 		debugger_instruction_hook(PC);
 

@@ -44,6 +44,13 @@ protected:
 		HFLAG = 0x10
 	};
 
+	// stop state flags (for STOP and WAIT instructions)
+	enum
+	{
+		M6805_STOP = 0x01,
+		M6805_WAIT = 0x02
+	};
+
 	typedef void (m6805_base_device::*op_handler_func)();
 	typedef op_handler_func const op_handler_table[256];
 	typedef u8 const cycle_count_table[256];
@@ -148,6 +155,10 @@ protected:
 
 	// for devices with timing-sensitive peripherals
 	virtual void burn_cycles(unsigned count) { }
+
+	// STOP instruction: peripheral side effects, and oscillator stabilisation cycles before it can be ended
+	virtual void stop_hook() { }
+	virtual unsigned stop_recovery_cycles() const noexcept { return 0; }
 
 	void clr_nz()   { m_cc &= ~(NFLAG | ZFLAG); }
 	void clr_nzc()  { m_cc &= ~(NFLAG | ZFLAG | CFLAG); }
@@ -298,6 +309,8 @@ protected:
 
 	// other internal states
 	int     m_icount;
+	u8      m_stop_state;   // M6805_STOP and/or M6805_WAIT
+	unsigned m_stop_recovery; // stabilisation cycles left after STOP
 
 	// address spaces
 	memory_access<16, 0, 0, ENDIANNESS_BIG>::cache m_cprogram16;
