@@ -125,6 +125,7 @@ DEFINE_DEVICE_TYPE(HD6805S1, hd6805s1_device, "hd6805s1", "Hitachi HD6805S1")
 DEFINE_DEVICE_TYPE(HD6805U1, hd6805u1_device, "hd6805u1", "Hitachi HD6805U1")
 
 DEFINE_DEVICE_TYPE(M146805E2, m146805e2_device, "m146805e2", "Motorola MC146805E2")
+DEFINE_DEVICE_TYPE(M146805F2, m146805f2_device, "m146805f2", "Motorola MC146805F2")
 
 /****************************************************************************
  * M68705 base device
@@ -911,6 +912,15 @@ m146805e2_device::m146805e2_device(machine_config const &mconfig, char const *ta
 	set_port_mask<3>(0xff); // Port D isn't present
 }
 
+m146805f2_device::m146805f2_device(machine_config const &mconfig, char const *tag, device_t *owner, uint32_t clock)
+	: m6805_mrom_device(mconfig, tag, owner, clock, M146805F2, { s_cmos_s_ops, s_cmos_cycles, 11, 0x007f, 0x0060, M6805_VECTOR_SWI }, 64)
+{
+	m_timer.set_options(m6805_timer::TIMER_PGM);
+
+	set_port_mask<2>(0xf0); // Port C is four bits wide, input only
+	set_port_mask<3>(0xff); // Port D isn't present
+}
+
 void m6805_hmos_device::internal_map(address_map &map)
 {
 	map.unmap_value_high();
@@ -992,6 +1002,15 @@ void m6805r3_device::internal_map(address_map &map)
 
 	map(0x000e, 0x000e).rw(FUNC(m6805r3_device::acr_r), FUNC(m6805r3_device::acr_w));
 	map(0x000f, 0x000f).rw(FUNC(m6805r3_device::arr_r), FUNC(m6805r3_device::arr_w));
+}
+
+void m146805f2_device::internal_map(address_map &map)
+{
+	m6805_mrom_device::internal_map(map);
+
+	// Port C has no output latch or data direction register
+	map(0x0002, 0x0002).nopw();
+	map(0x0006, 0x0006).nopw();
 }
 
 std::unique_ptr<util::disasm_interface> m6805_hmos_device::create_disassembler()
