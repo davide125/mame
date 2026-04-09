@@ -212,6 +212,10 @@ m146805_disassembler::m146805_disassembler() : m6805_base_disassembler(lvl::CMOS
 {
 }
 
+m146805_disassembler::m146805_disassembler(std::pair<u16, char const *> const symbols[], std::size_t symbol_count) : m6805_base_disassembler(lvl::CMOS, symbols, symbol_count)
+{
+}
+
 m68hc05_disassembler::m68hc05_disassembler() : m6805_base_disassembler(lvl::HC)
 {
 }

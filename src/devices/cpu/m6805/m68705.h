@@ -90,6 +90,8 @@ public:
 	void update(unsigned count);
 	void timer_w(int state);
 
+	void enter_stop(); // STOP instruction: TCR7 cleared, TCR6 set
+
 private:
 	enum tcr_mask : u8
 	{
@@ -197,6 +199,7 @@ protected:
 
 	virtual void interrupt() override;
 	virtual void burn_cycles(unsigned count) override;
+	virtual void stop_hook() override;
 
 	virtual std::unique_ptr<util::disasm_interface> create_disassembler() override;
 
@@ -462,6 +465,8 @@ protected:
 
 	virtual uint64_t execute_clocks_to_cycles(uint64_t clocks) const noexcept override { return (clocks + 4) / 5; }
 	virtual uint64_t execute_cycles_to_clocks(uint64_t cycles) const noexcept override { return cycles * 5; }
+
+	virtual std::unique_ptr<util::disasm_interface> create_disassembler() override;
 };
 
 class m146805e2_device : public m146805_device

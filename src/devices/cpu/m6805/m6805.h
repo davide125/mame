@@ -42,6 +42,13 @@ protected:
 		HFLAG = 0x10
 	};
 
+	// stop state flags (for STOP and WAIT instructions)
+	enum
+	{
+		M6805_STOP = 0x01,
+		M6805_WAIT = 0x02
+	};
+
 	typedef void (m6805_base_device::*op_handler_func)();
 	typedef op_handler_func const op_handler_table[256];
 	typedef u8 const cycle_count_table[256];
@@ -62,6 +69,7 @@ protected:
 			, m_sp_floor(sp_floor)
 			, m_vector_mask((1U << addr_width) - 1)
 			, m_swi_vector(swi_vector)
+			, m_stop_delay(0)
 		{
 		}
 
@@ -72,7 +80,8 @@ protected:
 				u32 sp_mask,
 				u32 sp_floor,
 				u16 vector_mask,
-				u16 swi_vector)
+				u16 swi_vector,
+				u16 stop_delay = 0)
 			: m_ops(ops)
 			, m_cycles(cycles)
 			, m_addr_width(addr_width)
@@ -80,6 +89,7 @@ protected:
 			, m_sp_floor(sp_floor)
 			, m_vector_mask(vector_mask)
 			, m_swi_vector(swi_vector)
+			, m_stop_delay(stop_delay)
 		{
 		}
 
@@ -90,6 +100,7 @@ protected:
 		u32 m_sp_floor;
 		u16 m_vector_mask;
 		u16 m_swi_vector;
+		u16 m_stop_delay; // oscillator stabilisation cycles before STOP can be ended
 	};
 
 	// opcode tables
@@ -146,6 +157,9 @@ protected:
 
 	// for devices with timing-sensitive peripherals
 	virtual void burn_cycles(unsigned count) { }
+
+	// peripheral side effects of the STOP instruction
+	virtual void stop_hook();
 
 	void clr_nz()   { m_cc &= ~(NFLAG | ZFLAG); }
 	void clr_nzc()  { m_cc &= ~(NFLAG | ZFLAG | CFLAG); }
@@ -296,6 +310,8 @@ protected:
 
 	// other internal states
 	int     m_icount;
+	u8      m_stop_state;       // M6805_STOP and/or M6805_WAIT
+	u16     m_stop_recovery;    // stabilisation cycles left after STOP
 
 	// address spaces
 	memory_access<16, 0, 0, ENDIANNESS_BIG>::cache m_cprogram16;

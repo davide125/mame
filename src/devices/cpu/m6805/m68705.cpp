@@ -93,6 +93,7 @@ ROM_END
 
 enum : u16 {
 	M68705_VECTOR_BOOTSTRAP  = 0xfff6,
+	M6805_VECTOR_TIMER_WAIT  = 0xfff6, // timer interrupt from WAIT (CMOS parts)
 	M6805_VECTOR_TIMER       = 0xfff8,
 	M6805_VECTOR_INT2        = 0xfff8,
 	M6805_VECTOR_INT         = 0xfffa,
@@ -101,6 +102,7 @@ enum : u16 {
 };
 
 constexpr u16 M6805_INT_MASK           = 0x03;
+constexpr u16 M146805_STOP_DELAY       = 1920; // tcyc for the oscillator to stabilise before STOP ends
 
 } // anonymous namespace
 
@@ -250,7 +252,7 @@ m68705_device::m68705_device(machine_config const &mconfig, char const *tag, dev
 }
 
 m146805_device::m146805_device(machine_config const &mconfig, char const *tag, device_t *owner, u32 clock, device_type type, u32 addr_width, unsigned ram_size)
-	: m6805_hmos_device(mconfig, tag, owner, clock, type, { addr_width > 13 ? s_cmos_b_ops : s_cmos_s_ops, s_cmos_cycles, addr_width, 0x007f, 0x0060, M6805_VECTOR_SWI }, ram_size)
+	: m6805_hmos_device(mconfig, tag, owner, clock, type, { addr_width > 13 ? s_cmos_b_ops : s_cmos_s_ops, s_cmos_cycles, addr_width, 0x007f, 0x0060, util::make_bitmask<u16>(addr_width), M6805_VECTOR_SWI, M146805_STOP_DELAY }, ram_size)
 {
 }
 
@@ -611,10 +613,12 @@ void m6805_hmos_device::interrupt()
 			{
 				LOGINT("servicing timer/counter interrupt\n");
 				standard_irq_callback(1, m_pc.w.l);
+				// CMOS parts have a separate vector for timer interrupts taken from WAIT
+				u16 const vector = (m_stop_state & M6805_WAIT) ? M6805_VECTOR_TIMER_WAIT : M6805_VECTOR_TIMER;
 				if (m_params.m_addr_width > 13)
-					rm16<true>(M6805_VECTOR_TIMER, m_pc);
+					rm16<true>(vector, m_pc);
 				else
-					rm16<false>(M6805_VECTOR_TIMER, m_pc);
+					rm16<false>(vector, m_pc);
 			}
 			else
 			{
@@ -629,6 +633,11 @@ void m6805_hmos_device::interrupt()
 void m6805_hmos_device::burn_cycles(unsigned count)
 {
 	m_timer.update(count);
+}
+
+void m6805_hmos_device::stop_hook()
+{
+	m_timer.enter_stop();
 }
 
 template <std::size_t N> void m6805_hmos_device::add_port_latch_state()
@@ -1001,6 +1010,11 @@ std::unique_ptr<util::disasm_interface> m6805_hmos_device::create_disassembler()
 	return std::make_unique<m6805_disassembler>(m6805_hmos_syms);
 }
 
+std::unique_ptr<util::disasm_interface> m146805_device::create_disassembler()
+{
+	return std::make_unique<m146805_disassembler>(m6805_hmos_syms);
+}
+
 void m6805_timer::tcr_w(u8 data)
 {
 	if (VERBOSE & LOG_TIMER)
@@ -1060,4 +1074,10 @@ void m6805_timer::timer_w(int state)
 		m_timer_edges++;
 
 	m_timer = bool(state);
+}
+
+void m6805_timer::enter_stop()
+{
+	m_tcr = (m_tcr & ~TCR_TIR) | TCR_TIM;
+	m_parent.set_input_line(M6805_INT_TIMER, CLEAR_LINE);
 }

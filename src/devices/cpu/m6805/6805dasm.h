@@ -84,6 +84,8 @@ class m146805_disassembler : public m6805_base_disassembler
 {
 public:
 	m146805_disassembler();
+	m146805_disassembler(std::pair<u16, char const *> const symbols[], std::size_t symbol_count);
+	template<size_t N> m146805_disassembler(std::pair<u16, char const *> const (&symbols)[N]) : m146805_disassembler(symbols, N) {}
 	virtual ~m146805_disassembler() = default;
 };
 
