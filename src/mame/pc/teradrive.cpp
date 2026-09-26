@@ -951,6 +951,9 @@ void teradrive_state::teradrive(machine_config &config)
 	keybc.kbd_irq().set("chipset", FUNC(wd7600_device::irq01_w));
 	keybc.kbd_clk().set("kbd", FUNC(pc_kbdc_device::clock_write_from_mb));
 	keybc.kbd_data().set("kbd", FUNC(pc_kbdc_device::data_write_from_mb));
+	keybc.aux_irq().set("chipset", FUNC(wd7600_device::irq12_w));
+	keybc.aux_clk().set("aux", FUNC(pc_kbdc_device::clock_write_from_mb));
+	keybc.aux_data().set("aux", FUNC(pc_kbdc_device::data_write_from_mb));
 
 	pc_kbdc_device &pc_kbdc(PC_KBDC(config, "kbd", pc_at_keyboards, STR_KBD_IBM_PC_AT_84));
 	pc_kbdc.out_clock_cb().set("keybc", FUNC(ps2_keyboard_controller_device::kbd_clk_w));
