@@ -13,6 +13,7 @@
 #include "pcat84.h"
 #include "pcat101.h"
 #include "hle_mouse.h"
+#include "logimouse_s2.h"
 
 void pc_xt_keyboards(device_slot_interface &device)
 {
@@ -37,4 +38,5 @@ void pc_at_keyboards(device_slot_interface &device)
 void ps2_mice(device_slot_interface &device)
 {
 	device.option_add(STR_HLE_PS2_MOUSE, HLE_PS2_MOUSE);
+	device.option_add(STR_LOGITECH_S2_PS2_MOUSE, LOGITECH_S2_PS2_MOUSE);
 }
