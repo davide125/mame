@@ -176,8 +176,8 @@ void i420ex_state::i420ex(machine_config &config)
 	pc_kbdc.out_data_cb().set(keybc, FUNC(at_kbc_device_base::kbd_data_w));
 
 	pc_kbdc_device &aux_kbdc(PC_KBDC(config, "aux", ps2_mice, nullptr));
-	aux_kbdc.out_clock_cb().set(keybc, FUNC(at_kbc_device_base::kbd_clk_w));
-	aux_kbdc.out_data_cb().set(keybc, FUNC(at_kbc_device_base::kbd_data_w));
+	aux_kbdc.out_clock_cb().set(keybc, FUNC(ps2_keyboard_controller_device::aux_clk_w));
+	aux_kbdc.out_data_cb().set(keybc, FUNC(ps2_keyboard_controller_device::aux_data_w));
 
 	SPEAKER(config, "mono").front_center();
 	SPEAKER_SOUND(config, m_speaker).add_route(ALL_OUTPUTS, "mono", 0.50);
