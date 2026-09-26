@@ -315,8 +315,8 @@ void ptpc110_state::ptpc110(machine_config &config)
 	pc_kbdc.out_data_cb().set(keybc, FUNC(at_kbc_device_base::kbd_data_w));
 
 	pc_kbdc_device &aux_kbdc(PC_KBDC(config, "aux", ps2_mice, nullptr));
-	aux_kbdc.out_clock_cb().set(keybc, FUNC(at_kbc_device_base::kbd_clk_w));
-	aux_kbdc.out_data_cb().set(keybc, FUNC(at_kbc_device_base::kbd_data_w));
+	aux_kbdc.out_clock_cb().set(keybc, FUNC(ps2_keyboard_controller_device::aux_clk_w));
+	aux_kbdc.out_data_cb().set(keybc, FUNC(ps2_keyboard_controller_device::aux_data_w));
 
 	rs232_port_device& serport0(RS232_PORT(config, "serport0", isa_com, nullptr));
 	serport0.rxd_handler().set("board2:superio", FUNC(fdc37c665ir_device::rxd1_w));
