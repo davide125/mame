@@ -4,9 +4,18 @@
 
 Hitachi HD6305 series
 
+STOP and WAIT (HD6305 Series Handbook, 1988):
+- HD6305U0/V0: both clear the I bit.  STOP also masks and withdraws the
+  timer and SCI interrupt requests and reloads the timer.  A timer
+  interrupt that ends wait mode has its own vector at 0x1ff6.
+- HD6305X/Y: neither changes the I bit.  If it is set when an interrupt
+  request ends the mode, execution carries on after the instruction.
+- Neither mode is entered while an interrupt request is held.
+
 TODO:
 - HD6305xx has a 14-bit address space, not 13 (memory_access in m6805.h)
-- add unimplemented opcodes: STOP, WAIT, DAA, and HD63705Z0 also has MUL
+- add unimplemented opcode DAA
+- add STOP, WAIT and MUL for the HD63705Z0
 - add HD63705Z0 peripherals
 
 */
@@ -29,6 +38,14 @@ TODO:
 #define LOGTIMER(...)   LOGMASKED(LOG_TIMER,  __VA_ARGS__)
 #define LOGSCI(...)     LOGMASKED(LOG_SCI,    __VA_ARGS__)
 #define LOGMISC(...)    LOGMASKED(LOG_MISC,   __VA_ARGS__)
+
+
+namespace {
+
+// oscillator stabilisation delay on leaving stop mode, about 14 ms with a 4 MHz crystal
+constexpr u16 STOP_DELAY = 14'000;
+
+} // anonymous namespace
 
 
 hd6305_device::hd6305_device(
@@ -370,7 +387,6 @@ void hd6305_device::interrupt_vector()
 		rm16<false>(0x1ff8, m_pc);
 	}
 	else if((m_pending_interrupts & (1 << HD6305_INT_TIMER1)) != 0) {
-		// TODO: 1ff6 when in wait...
 		m_pending_interrupts &= ~(1 << HD6305_INT_TIMER1);
 		rm16<false>(0x1ff8, m_pc);
 	}
@@ -382,6 +398,36 @@ void hd6305_device::interrupt_vector()
 		m_pending_interrupts &= ~(1 << HD6305_INT_SCI);
 		rm16<false>(0x1ff4, m_pc);
 	}
+}
+
+void hd6305_device::stop_hook()
+{
+	// stop mode is not entered while an interrupt request is held
+	if(m_pending_interrupts != 0) {
+		m_stop_state &= ~M6805_STOP;
+		return;
+	}
+
+	// the oscillator stops, which freezes the timer and the SCI
+	timer_update_regs();
+	m_timer_timer->adjust(attotime::never);
+	m_timer_sci->adjust(attotime::never);
+}
+
+void hd6305_device::wait_hook()
+{
+	// wait mode is not entered while an interrupt request is held
+	if(m_pending_interrupts != 0)
+		m_stop_state &= ~M6805_WAIT;
+}
+
+void hd6305_device::stop_exit_hook()
+{
+	// the timer and the SCI carry on from where they stopped
+	m_timer_last_update = machine().time().as_ticks(clock())/4;
+	timer_wait_next_timeout();
+	if(m_sci_tx_step != 0)
+		sci_timer_step();
 }
 
 
@@ -396,7 +442,7 @@ hd6305v0_device::hd6305v0_device(const machine_config &mconfig, const char *tag,
 			owner,
 			clock,
 			HD6305V0,
-			{ s_hmos_s_ops, s_hd6305_cycles, 14, 0x00ff, 0x00c0, 0x1fff, 0x1ffc },
+			{ s_cmos_s_ops, s_hd6305_cycles, 14, 0x00ff, 0x00c0, 0x1fff, 0x1ffc, STOP_DELAY },
 			address_map_constructor(FUNC(hd6305v0_device::internal_map), this))
 {
 }
@@ -421,6 +467,34 @@ void hd6305v0_device::internal_map(address_map &map)
 	map(0x1000, 0x1fff).rom().region(DEVICE_SELF, 0);
 }
 
+void hd6305v0_device::interrupt_vector()
+{
+	// a timer interrupt that ends wait mode has its own vector
+	constexpr u16 EXTERNAL = (1 << HD6305_INT_IRQ1) | (1 << HD6305_INT_IRQ2);
+	if((m_stop_state & M6805_WAIT) && !(m_pending_interrupts & EXTERNAL) && BIT(m_pending_interrupts, HD6305_INT_TIMER1)) {
+		m_pending_interrupts &= ~(1 << HD6305_INT_TIMER1);
+		rm16<false>(0x1ff6, m_pc);
+	}
+	else
+		hd6305_device::interrupt_vector();
+}
+
+void hd6305v0_device::stop_hook()
+{
+	// STOP withdraws and masks the timer and SCI interrupt requests and reloads the timer
+	timer_update_regs();
+	m_tcr = (m_tcr & 0x3f) | 0x40;
+	m_ssr = (m_ssr & 0x0f) | 0x30;
+	m_tdr = 0xf0;
+	m_pending_interrupts &= ~((1 << HD6305_INT_TIMER1) | (1 << HD6305_INT_TIMER2) | (1 << HD6305_INT_SCI));
+
+	hd6305_device::stop_hook();
+
+	// if stop mode was not entered, the timer runs on from its new value
+	if(!(m_stop_state & M6805_STOP))
+		timer_wait_next_timeout();
+}
+
 
 /****************************************************************************
  * HD6305Y0 section
@@ -433,7 +507,7 @@ hd6305y0_device::hd6305y0_device(const machine_config &mconfig, const char *tag,
 			owner,
 			clock,
 			HD6305Y0,
-			{ s_hmos_s_ops, s_hd6305_cycles, 14, 0x00ff, 0x00c0, 0x1fff, 0x1ffc },
+			{ s_cmos_s_ops, s_hd6305_cycles, 14, 0x00ff, 0x00c0, 0x1fff, 0x1ffc, STOP_DELAY, false }, // STOP and WAIT leave the I bit alone
 			address_map_constructor(FUNC(hd6305y0_device::internal_map), this))
 {
 }
@@ -481,7 +555,7 @@ hd6305y2_device::hd6305y2_device(const machine_config &mconfig, const char *tag,
 			owner,
 			clock,
 			HD6305Y2,
-			{ s_hmos_s_ops, s_hd6305_cycles, 14, 0x00ff, 0x00c0, 0x1fff, 0x1ffc },
+			{ s_cmos_s_ops, s_hd6305_cycles, 14, 0x00ff, 0x00c0, 0x1fff, 0x1ffc, STOP_DELAY, false }, // STOP and WAIT leave the I bit alone
 			address_map_constructor(FUNC(hd6305y2_device::internal_map), this))
 {
 }

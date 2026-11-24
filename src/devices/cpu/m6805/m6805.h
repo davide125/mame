@@ -70,6 +70,7 @@ protected:
 			, m_vector_mask((1U << addr_width) - 1)
 			, m_swi_vector(swi_vector)
 			, m_stop_delay(0)
+			, m_stop_clears_i(true)
 		{
 		}
 
@@ -81,7 +82,8 @@ protected:
 				u32 sp_floor,
 				u16 vector_mask,
 				u16 swi_vector,
-				u16 stop_delay = 0)
+				u16 stop_delay = 0,
+				bool stop_clears_i = true)
 			: m_ops(ops)
 			, m_cycles(cycles)
 			, m_addr_width(addr_width)
@@ -90,6 +92,7 @@ protected:
 			, m_vector_mask(vector_mask)
 			, m_swi_vector(swi_vector)
 			, m_stop_delay(stop_delay)
+			, m_stop_clears_i(stop_clears_i)
 		{
 		}
 
@@ -101,6 +104,7 @@ protected:
 		u16 m_vector_mask;
 		u16 m_swi_vector;
 		u16 m_stop_delay; // oscillator stabilisation cycles before STOP can be ended
+		bool m_stop_clears_i; // STOP and WAIT clear the interrupt mask
 	};
 
 	// opcode tables
@@ -158,8 +162,12 @@ protected:
 	// for devices with timing-sensitive peripherals
 	virtual void burn_cycles(unsigned count) { }
 
-	// peripheral side effects of the STOP instruction
+	// side effects of the STOP and WAIT instructions (either hook can clear
+	// its state flag again if the mode is not entered) and of leaving stop
+	// mode
 	virtual void stop_hook();
+	virtual void wait_hook();
+	virtual void stop_exit_hook();
 
 	void clr_nz()   { m_cc &= ~(NFLAG | ZFLAG); }
 	void clr_nzc()  { m_cc &= ~(NFLAG | ZFLAG | CFLAG); }
