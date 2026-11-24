@@ -580,6 +580,14 @@ void m6805_base_device::stop_hook()
 {
 }
 
+void m6805_base_device::wait_hook()
+{
+}
+
+void m6805_base_device::stop_exit_hook()
+{
+}
+
 
 //-------------------------------------------------
 //  disassemble - call the disassembly
@@ -660,6 +668,9 @@ void m6805_base_device::execute_run()
 					}
 					else
 					{
+						if (m_stop_state & M6805_STOP)
+							stop_exit_hook();
+
 						// interrupt() checks the WAIT state to pick the timer vector
 						interrupt();
 						m_stop_state = 0;

@@ -528,17 +528,21 @@ OP_HANDLER( swi )
 // $8E STOP inherent    ----
 OP_HANDLER( stop )
 {
-	CLI;
+	if (m_params.m_stop_clears_i)
+		CLI;
 	m_stop_state |= M6805_STOP;
-	m_stop_recovery = m_params.m_stop_delay;
 	stop_hook();
+	if (m_stop_state & M6805_STOP)
+		m_stop_recovery = m_params.m_stop_delay;
 }
 
 // $8F WAIT inherent    ----
 OP_HANDLER( wait )
 {
-	CLI;
+	if (m_params.m_stop_clears_i)
+		CLI;
 	m_stop_state |= M6805_WAIT;
+	wait_hook();
 }
 
 

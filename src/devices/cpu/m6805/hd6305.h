@@ -44,6 +44,9 @@ protected:
 	virtual void execute_set_input(int inputnum, int state) override;
 	virtual bool execute_input_edge_triggered(int inputnum) const noexcept override { return inputnum == INPUT_LINE_NMI; }
 	virtual void interrupt_vector() override;
+	virtual void stop_hook() override;
+	virtual void wait_hook() override;
+	virtual void stop_exit_hook() override;
 
 	virtual bool test_il() override { return m_nmi_state != CLEAR_LINE; }
 
@@ -118,6 +121,10 @@ public:
 	auto write_portc() { return m_write_port[2].bind(); }
 	auto read_portd()  { return m_read_port [3].bind(); }
 	auto write_portd() { return m_write_port[3].bind(); }
+
+protected:
+	virtual void interrupt_vector() override;
+	virtual void stop_hook() override;
 
 private:
 	void internal_map(address_map &map) ATTR_COLD;
